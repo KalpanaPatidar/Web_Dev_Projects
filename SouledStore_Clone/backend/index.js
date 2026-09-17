@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-
+const cartRoutes = require("./routes/cartRoutes");
 const productRoutes = require("./routes/productRoutes");
 
 const app = express();
@@ -15,6 +15,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/products", productRoutes);
+app.use("/api/cart", cartRoutes);
 
 const PORT = 5000;
 

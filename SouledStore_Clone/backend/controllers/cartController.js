@@ -4,26 +4,14 @@ const addToCart = async (req, res) => {
   try {
     const { userId, productId, quantity, size } = req.body;
 
+    // Basic validation
     if (!userId || !productId || !quantity || !size) {
       return res.status(400).json({
         message: "userId, productId, quantity and size are required",
       });
     }
 
-    // Check user
-    const user = await prisma.user.findUnique({
-      where: {
-        id: Number(userId),
-      },
-    });
-
-    if (!user) {
-      return res.status(404).json({
-        message: "User not found",
-      });
-    }
-
-    // Check product
+    // Check whether product exists
     const product = await prisma.product.findUnique({
       where: {
         id: Number(productId),
@@ -52,7 +40,7 @@ const addToCart = async (req, res) => {
       });
     }
 
-    // Check existing cart item
+    // Check whether same product + same size is already in cart
     const existingItem = await prisma.cartItem.findUnique({
       where: {
         cartId_productId_size: {
@@ -66,6 +54,7 @@ const addToCart = async (req, res) => {
     let cartItem;
 
     if (existingItem) {
+      // Increase quantity
       cartItem = await prisma.cartItem.update({
         where: {
           id: existingItem.id,
@@ -75,6 +64,7 @@ const addToCart = async (req, res) => {
         },
       });
     } else {
+      // Create new cart item
       cartItem = await prisma.cartItem.create({
         data: {
           cartId: cart.id,
@@ -97,7 +87,42 @@ const addToCart = async (req, res) => {
     });
   }
 };
+const getCart = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const cart = await prisma.cart.findUnique({
+      where: {
+        userId: Number(userId),
+      },
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
+
+    if (!cart) {
+      return res.status(404).json({
+        message: "Cart not found",
+      });
+    }
+
+    res.status(200).json({
+      cart,
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: "Failed to fetch cart",
+    });
+  }
+};
 
 module.exports = {
   addToCart,
+    getCart,
 };
