@@ -122,7 +122,73 @@ const getCart = async (req, res) => {
   }
 };
 
+const updateCartItem= async(req,res)=>{
+  try{
+    const{itemId}=req.params;
+    const {quantity}=req.body;
+    if (!quantity || Number(quantity) < 1) {
+      return res.status(400).json({
+        message: "Quantity must be at least 1",
+      });
+    }
+        const cartItem = await prisma.cartItem.update({
+      where: {
+        id: Number(itemId),
+      },
+      data: {
+        quantity: Number(quantity),
+      },
+    });
+
+    res.status(200).json({
+      message: "Cart quantity updated",
+      cartItem,
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: "Failed to update cart quantity",
+    });
+  }
+}
+const removeCartItem = async (req, res) => {
+  try {
+    const { itemId } = req.params;
+
+    const cartItem = await prisma.cartItem.findUnique({
+      where: {
+        id: Number(itemId),
+      },
+    });
+
+    if (!cartItem) {
+      return res.status(404).json({
+        message: "Cart item not found",
+      });
+    }
+
+    await prisma.cartItem.delete({
+      where: {
+        id: Number(itemId),
+      },
+    });
+
+    res.status(200).json({
+      message: "Product removed from cart",
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: "Failed to remove product from cart",
+    });
+  }
+};
+
 module.exports = {
   addToCart,
-    getCart,
+  getCart,
+  updateCartItem,
+    removeCartItem
 };
