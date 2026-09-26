@@ -1,21 +1,51 @@
 import { useEffect, useState } from "react";
 
 function Cart() {
-  const [cart, setCart] = useState(null);
+  const [cart, setCart] = useState({
+    items: [],
+  });
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const userId = 1;
-  const totalPrice = cart.items.reduce(
-  (total, item) =>
-    total + Number(item.product.price) * item.quantity,
-  0
-);
-  // Quantity update
+
+  // Fetch cart
+  useEffect(() => {
+    const fetchCart = async () => {
+      try {
+        setLoading(true);
+
+        const response = await fetch(
+          `http://localhost:5000/api/cart/${userId}`
+        );
+
+        const data = await response.json();
+
+        console.log("CART API RESPONSE:", data);
+        console.log("CART ITEMS:", data.cart?.items);
+
+        if (!response.ok) {
+          throw new Error(
+            data.message || "Failed to fetch cart"
+          );
+        }
+
+        setCart(data.cart);
+      } catch (error) {
+        console.error("Cart Error:", error);
+        setError(error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCart();
+  }, []);
+
+  // Update quantity
   const updateQuantity = async (itemId, newQuantity) => {
-    if (newQuantity < 1) {
-      return;
-    }
+    if (newQuantity < 1) return;
 
     try {
       const response = await fetch(
@@ -57,8 +87,6 @@ function Cart() {
 
   // Remove item
   const removeItem = async (itemId) => {
-    console.log("Removing item:", itemId);
-
     try {
       const response = await fetch(
         `http://localhost:5000/api/cart/${itemId}`,
@@ -68,8 +96,6 @@ function Cart() {
       );
 
       const data = await response.json();
-
-      console.log("Delete response:", data);
 
       if (!response.ok) {
         throw new Error(
@@ -88,34 +114,6 @@ function Cart() {
     }
   };
 
-  // Fetch cart
-  useEffect(() => {
-    const fetchCart = async () => {
-      try {
-        const response = await fetch(
-          `http://localhost:5000/api/cart/${userId}`
-        );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(
-            data.message || "Failed to fetch cart"
-          );
-        }
-
-        setCart(data.cart);
-      } catch (error) {
-        console.error(error);
-        setError(error.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCart();
-  }, []);
-
   if (loading) {
     return <h2>Loading cart...</h2>;
   }
@@ -128,6 +126,48 @@ function Cart() {
     return <h2>Your cart is empty</h2>;
   }
 
+  const totalPrice = cart.items.reduce(
+    (total, item) =>
+      total +
+      Number(item.product.price) * item.quantity,
+    0
+  );
+  const handleCheckout = async () => {
+  try {
+    const response = await fetch(
+      "http://localhost:5000/api/orders",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: userId,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.message || "Failed to create order"
+      );
+    }
+
+    console.log("ORDER CREATED:", data);
+
+    alert("Order placed successfully!");
+
+    // Cart is cleared after successful order
+    setCart({
+      items: [],
+    });
+  } catch (error) {
+    console.error("Checkout error:", error);
+    alert(error.message);
+  }
+};
   return (
     <div style={{ padding: "20px" }}>
       <h1>My Cart</h1>
@@ -154,9 +194,13 @@ function Cart() {
           <div>
             <h2>{item.product.name}</h2>
 
-            <p>Price: ₹{item.product.price}</p>
+            <p>
+              Price: ₹{item.product.price}
+            </p>
 
-            <p>Size: {item.size}</p>
+            <p>
+              Size: {item.size}
+            </p>
 
             <div>
               <button
@@ -171,7 +215,11 @@ function Cart() {
                 −
               </button>
 
-              <span style={{ margin: "0 15px" }}>
+              <span
+                style={{
+                  margin: "0 15px",
+                }}
+              >
                 {item.quantity}
               </span>
 
@@ -207,32 +255,42 @@ function Cart() {
             >
               Remove
             </button>
-          </div>
-          <div
+            <button
+  onClick={handleCheckout}
   style={{
-    borderTop: "2px solid #ddd",
-    marginTop: "20px",
-    paddingTop: "20px",
+    padding: "12px 25px",
+    backgroundColor: "#FD6F00",
+    color: "white",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+    marginLeft: "10px",
   }}
 >
-  <h2>Cart Total: ₹{totalPrice}</h2>
-
-  <button
-    style={{
-      padding: "12px 25px",
-      backgroundColor: "#FD6F00",
-      color: "white",
-      border: "none",
-      borderRadius: "6px",
-      cursor: "pointer",
-      fontSize: "16px",
-    }}
-  >
-    Proceed to Checkout
-  </button>
-</div>
+  Proceed to Checkout
+</button>
+          </div>
         </div>
       ))}
+
+      <hr />
+
+      <h2>
+        Cart Total: ₹{totalPrice}
+      </h2>
+
+      <button
+        style={{
+          padding: "12px 25px",
+          backgroundColor: "#FD6F00",
+          color: "white",
+          border: "none",
+          borderRadius: "6px",
+          cursor: "pointer",
+        }}
+      >
+        Proceed to Checkout
+      </button>
     </div>
   );
 }
